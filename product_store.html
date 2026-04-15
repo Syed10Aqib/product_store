@@ -1,0 +1,183 @@
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<div id="root"></div>
+<script>
+const { useState } = React;
+
+const products = [
+  { id: 1, name: "Wireless Headphones", category: "Electronics", price: 2499, stock: 12, rating: 4.5, brand: "SoundMax", desc: "Premium noise-cancelling headphones with 30hr battery." },
+  { id: 2, name: "Running Shoes", category: "Clothing", price: 1899, stock: 5, rating: 4.2, brand: "SpeedStep", desc: "Lightweight mesh shoes with responsive cushioning sole." },
+  { id: 3, name: "React.js Handbook", category: "Books", price: 549, stock: 30, rating: 4.8, brand: "TechPress", desc: "Complete guide to modern React with hooks and patterns." },
+  { id: 4, name: "Smart Watch", category: "Electronics", price: 4999, stock: 3, rating: 4.6, brand: "ChronoTech", desc: "AMOLED display, heart rate, SpO2 and GPS tracking." },
+  { id: 5, name: "Graphic T-Shirt", category: "Clothing", price: 499, stock: 20, rating: 3.9, brand: "UrbanWear", desc: "100% cotton oversized fit with original art print." },
+  { id: 6, name: "Clean Code", category: "Books", price: 699, stock: 15, rating: 4.9, brand: "DevBooks", desc: "Robert C. Martin's guide to writing readable code." },
+  { id: 7, name: "Laptop Sleeve", category: "Accessories", price: 799, stock: 8, rating: 4.3, brand: "SlimCase", desc: "Water-resistant neoprene sleeve for 13-15 inch laptops." },
+  { id: 8, name: "Bluetooth Speaker", category: "Electronics", price: 1499, stock: 6, rating: 4.4, brand: "SoundMax", desc: "360 surround sound with IPX5 waterproof rating." },
+];
+
+function StarRating({ rating }) {
+  const fullStars = Math.floor(rating);
+  const hasHalf = rating % 1 >= 0.5;
+  return React.createElement("span", { style: { color: "#f5a623", fontSize: 13 } },
+    "★".repeat(fullStars),
+    hasHalf ? "½" : "",
+    React.createElement("span", { style: { color: "#999", fontSize: 12 } }, ` (${rating})`)
+  );
+}
+
+function ProductCard({ product, isSelected, onSelect }) {
+  const categoryColors = {
+    Electronics: { bg: "#e8f0fe", color: "#1a56db" },
+    Clothing: { bg: "#fce8f3", color: "#99154b" },
+    Books: { bg: "#def7ec", color: "#03543f" },
+    Accessories: { bg: "#fdf6b2", color: "#723b13" },
+  };
+  const badge = categoryColors[product.category] || { bg: "#f0f0f0", color: "#333" };
+  return React.createElement("div", {
+    onClick: () => onSelect(product),
+    style: {
+      padding: "1rem", border: isSelected ? "2px solid #1D9E75" : "1px solid #e0e0e0",
+      borderRadius: 12, cursor: "pointer", background: "#fff", transition: "all 0.15s",
+    }
+  },
+    React.createElement("span", { style: { display: "inline-block", fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10, marginBottom: 8, background: badge.bg, color: badge.color } }, product.category),
+    React.createElement("div", { style: { fontWeight: 600, fontSize: 14, marginBottom: 2 } }, product.name),
+    React.createElement("div", { style: { fontSize: 22, fontWeight: 700, margin: "4px 0" } }, `Rs.${product.price.toLocaleString()}`),
+    React.createElement("div", { style: { fontSize: 12, color: product.stock <= 5 ? "#d97706" : "#6b7280" } },
+      product.stock <= 5 ? `Only ${product.stock} left!` : `In stock: ${product.stock}`
+    ),
+    React.createElement("div", { style: { marginTop: 4 } }, React.createElement(StarRating, { rating: product.rating }))
+  );
+}
+
+function ProductDetail({ product }) {
+  const rows = [
+    ["Brand", product.brand],
+    ["Category", product.category],
+    ["Description", product.desc],
+    ["Price", `Rs.${product.price.toLocaleString()}`],
+    ["Stock", `${product.stock} units`],
+  ];
+  return React.createElement("div", { style: { background: "#f9fafb", borderRadius: 12, padding: "1.25rem", marginBottom: "1.25rem" } },
+    React.createElement("h3", { style: { fontSize: 18, fontWeight: 700, marginBottom: 8 } }, product.name),
+    React.createElement("div", { style: { marginBottom: 10 } }, React.createElement(StarRating, { rating: product.rating })),
+    rows.map(([label, value]) =>
+      React.createElement("div", { key: label, style: { display: "flex", justifyContent: "space-between", fontSize: 13, padding: "7px 0", borderBottom: "1px solid #e5e7eb" } },
+        React.createElement("span", { style: { color: "#6b7280" } }, label),
+        React.createElement("span", { style: { fontWeight: 600, maxWidth: "60%", textAlign: "right" } }, value)
+      )
+    )
+  );
+}
+
+function App() {
+  const [filter, setFilter] = useState("All");
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [cart, setCart] = useState([]);
+  const [notification, setNotification] = useState("");
+
+  const categories = ["All", ...new Set(products.map(p => p.category))];
+  const filteredProducts = filter === "All" ? products : products.filter(p => p.category === filter);
+  const avgPrice = filteredProducts.length ? Math.round(filteredProducts.reduce((sum, p) => sum + p.price, 0) / filteredProducts.length) : 0;
+  const cartTotal = cart.reduce((sum, id) => { const p = products.find(x => x.id === id); return sum + (p ? p.price : 0); }, 0);
+
+  function handleFilterChange(cat) { setFilter(cat); setSelectedProduct(null); }
+  function handleSelectProduct(product) { setSelectedProduct(selectedProduct?.id === product.id ? null : product); }
+
+  function handleAddToCart() {
+    if (!selectedProduct) return;
+    const alreadyInCart = cart.filter(id => id === selectedProduct.id).length;
+    if (alreadyInCart >= selectedProduct.stock) {
+      setNotification(`No more stock available for "${selectedProduct.name}"!`);
+      setTimeout(() => setNotification(""), 2500);
+      return;
+    }
+    setCart([...cart, selectedProduct.id]);
+    setNotification(`Added "${selectedProduct.name}" to cart!`);
+    setTimeout(() => setNotification(""), 2500);
+  }
+
+  function handleClearCart() { setCart([]); setNotification(""); }
+
+  function handleRemoveFromCart(idToRemove) {
+    const index = cart.indexOf(idToRemove);
+    if (index !== -1) { const newCart = [...cart]; newCart.splice(index, 1); setCart(newCart); }
+  }
+
+  return React.createElement("div", { style: { padding: "2rem", fontFamily: "sans-serif", maxWidth: 860, margin: "0 auto" } },
+    React.createElement("h1", { style: { fontSize: 28, fontWeight: 700, marginBottom: 4 } }, "Product Store"),
+    React.createElement("p", { style: { color: "#6b7280", fontSize: 13, marginBottom: "1.5rem" } }, "Week 3 Assignment – Dynamic Content Mini Project – React useState Hook"),
+
+    notification && React.createElement("div", {
+      style: { background: notification.startsWith("No more") ? "#fee2e2" : "#d1fae5", color: notification.startsWith("No more") ? "#991b1b" : "#065f46", borderRadius: 8, padding: "8px 14px", fontSize: 13, marginBottom: "1rem" }
+    }, notification),
+
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: "1.5rem" } },
+      [
+        { label: "Showing", value: filteredProducts.length },
+        { label: "Avg Price", value: `Rs.${avgPrice.toLocaleString()}` },
+        { label: "In Cart", value: cart.length },
+        { label: "Cart Total", value: `Rs.${cartTotal.toLocaleString()}` },
+      ].map(({ label, value }) =>
+        React.createElement("div", { key: label, style: { background: "#f3f4f6", borderRadius: 8, padding: "12px 14px" } },
+          React.createElement("div", { style: { fontSize: 11, color: "#9ca3af", textTransform: "uppercase", marginBottom: 4 } }, label),
+          React.createElement("div", { style: { fontSize: 22, fontWeight: 700 } }, value)
+        )
+      )
+    ),
+
+    React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "1.25rem" } },
+      categories.map(cat =>
+        React.createElement("button", {
+          key: cat, onClick: () => handleFilterChange(cat),
+          style: { padding: "5px 16px", fontSize: 12, fontWeight: 500, borderRadius: 20, cursor: "pointer", border: "1px solid #e0e0e0", background: filter === cat ? "#1D9E75" : "#fff", color: filter === cat ? "#fff" : "#4b5563" }
+        }, cat)
+      )
+    ),
+
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(185px, 1fr))", gap: 12, marginBottom: "1.5rem" } },
+      filteredProducts.length === 0
+        ? React.createElement("p", { style: { color: "#9ca3af", fontSize: 13 } }, "No products found.")
+        : filteredProducts.map(product =>
+            React.createElement(ProductCard, { key: product.id, product, isSelected: selectedProduct?.id === product.id, onSelect: handleSelectProduct })
+          )
+    ),
+
+    selectedProduct && React.createElement(ProductDetail, { product: selectedProduct }),
+
+    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } },
+      React.createElement("button", {
+        onClick: handleAddToCart, disabled: !selectedProduct,
+        style: { padding: "9px 22px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none", cursor: selectedProduct ? "pointer" : "not-allowed", background: selectedProduct ? "#1D9E75" : "#e5e7eb", color: selectedProduct ? "#fff" : "#9ca3af" }
+      }, "Add to Cart"),
+
+      cart.length > 0 && React.createElement("button", {
+        onClick: handleClearCart,
+        style: { padding: "9px 22px", fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: "pointer", border: "1px solid #e0e0e0", background: "#fff", color: "#374151" }
+      }, "Clear Cart"),
+
+      React.createElement("div", null,
+        React.createElement("div", { style: { fontSize: 13, color: "#6b7280" } },
+          cart.length > 0 ? `${cart.length} item${cart.length !== 1 ? "s" : ""} – Rs.${cartTotal.toLocaleString()}` : "Select a product to add to cart"
+        ),
+        cart.length > 0 && React.createElement("div", { style: { fontSize: 11, color: "#9ca3af", marginTop: 4 } },
+          [...new Set(cart)].map(id => {
+            const p = products.find(x => x.id === id);
+            const qty = cart.filter(c => c === id).length;
+            return React.createElement("span", { key: id, style: { display: "inline-flex", alignItems: "center", gap: 4, background: "#f3f4f6", borderRadius: 6, padding: "2px 8px", marginRight: 6, marginBottom: 4 } },
+              `${p?.name}${qty > 1 ? ` x${qty}` : ""}`,
+              React.createElement("button", {
+                onClick: () => handleRemoveFromCart(id),
+                style: { background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 12, padding: 0, lineHeight: 1 }
+              }, "✕")
+            );
+          })
+        )
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
